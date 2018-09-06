@@ -1,2 +1,20 @@
 # july
-OPDS home catalog
+July is simple OPDS home catalog without any external dependencies.
+
+## Install
+
+```shell
+$ go get github.com/vasyahuyasa/july
+```
+
+## Basic usage
+
+```shell
+Usage of ./july:
+  -d string
+        Root storage directory
+  -i string
+        Service network interface (default "0.0.0.0")
+  -p int
+        Service port (default 80)
+```
