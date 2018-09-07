@@ -1,5 +1,5 @@
 # july
-July is simple OPDS home catalog without any external dependencies.
+July is simple OPDS home catalog without any external dependencies. Currntly supported only listing without covers and meta information.
 
 ## Install
 
