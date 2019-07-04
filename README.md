@@ -1,4 +1,7 @@
 # july
+
+[![Scc Count Badge](https://sloc.xyz/github/vasyahuyasa/july/)](https://github.com/vasyahuyasa/july/)
+
 July is simple OPDS home catalog without any external dependencies. Currntly supported only listing without covers and meta information.
 
 ## Install
