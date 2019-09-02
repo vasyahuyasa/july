@@ -7,7 +7,7 @@ July is simple OPDS home catalog without any external dependencies. Currntly sup
 ## Install
 
 ```shell
-$ go get github.com/vasyahuyasa/july
+$ go get github.com/vasyahuyasa/july/cmd/july
 ```
 
 ## Basic usage
