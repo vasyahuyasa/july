@@ -10,6 +10,10 @@ July is simple OPDS home catalog without any external dependencies. Currntly sup
 $ go get github.com/vasyahuyasa/july/cmd/july
 ```
 
+## Docker
+
+https://cloud.docker.com/u/vasyahuyasa/repository/docker/vasyahuyasa/july
+
 ## Basic usage
 
 ```shell
