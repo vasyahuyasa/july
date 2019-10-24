@@ -12,7 +12,7 @@ $ go get github.com/vasyahuyasa/july/cmd/july
 
 ## Docker
 
-https://cloud.docker.com/u/vasyahuyasa/repository/docker/vasyahuyasa/july
+https://hub.docker.com/r/vasyahuyasa/july
 
 ## Basic usage
 
