@@ -8,8 +8,8 @@ type Feed struct {
 	Title   string   `xml:"title"`
 	Xmlns   string   `xml:"xmlns,attr"`
 	Updated string   `xml:"updated"`
-	Link    []*Link   `xml:"link"`
-	Entry   []*Entry  `xml:"entry"`
+	Link    []Link   `xml:"link"`
+	Entry   []Entry  `xml:"entry"`
 }
 
 type Link struct {
@@ -22,5 +22,5 @@ type Entry struct {
 	ID      string `xml:"id"`
 	Updated string `xml:"updated"`
 	Title   string `xml:"title"`
-	Link    []*Link `xml:"link"`
+	Link    []Link `xml:"link"`
 }
