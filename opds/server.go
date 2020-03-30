@@ -33,22 +33,29 @@ func (s *Server) opdsHandler(w http.ResponseWriter, r *http.Request) {
 	start := "http://" + r.Host + startURL
 	path := r.URL.Path[len(startURL):]
 
-	canDownload, err := s.store.IsDownloadable(path)
-	if err != nil {
-		log.Printf("can not check if path %q is downloadable: %#v", path, err)
-		code := http.StatusInternalServerError
-		if os.IsNotExist(err) {
-			code = http.StatusNotFound
+	log.Printf("Path %q", path)
+
+	canDownload := false
+
+	// root always must be folder
+	if path != "" {
+		var err error
+		if canDownload, err = s.store.IsDownloadable(path); err != nil {
+			log.Printf("can not check if path %q is downloadable: %#v", path, err)
+			code := http.StatusInternalServerError
+			if os.IsNotExist(err) {
+				code = http.StatusNotFound
+			}
+			http.Error(w, fmt.Sprintf("can not check if path %q is downloadable: %v", path, err), code)
+			return
 		}
-		http.Error(w, fmt.Sprintf("can not check if path %q is downloadable: %v", path, err), code)
-		return
 	}
 
 	// if we can't download so it should be folder, lets list it
 	if !canDownload {
 		list, err := s.store.List(path)
 		if err != nil {
-			log.Printf("can not list file is %q: %v", path, err)
+			log.Printf("can not list files in %q: %v", path, err)
 			http.Error(w, fmt.Sprintf("can not list file is %q: %v", path, err), http.StatusInternalServerError)
 			return
 		}
@@ -88,7 +95,7 @@ func (s *Server) opdsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// download file
-	err = s.store.Download(w, path)
+	err := s.store.Download(w, path)
 	if err != nil {
 		log.Printf("can not download %q: %v", path, err)
 		if err != io.ErrClosedPipe {
