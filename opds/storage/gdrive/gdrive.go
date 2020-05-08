@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/vasyahuyasa/july/opds/storage"
 	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 	"google.golang.org/api/drive/v3"
 )
 
@@ -55,7 +57,7 @@ func (drive *GdriveStorage) List(path string) ([]storage.StorageEntry, error) {
 		for _, i := range r.Files {
 			fmt.Println(i.Name, i.Id, i.MimeType)
 
-			mod, err := time.Parse(time.RFC822, i.ModifiedTime)
+			mod, err := time.Parse(time.RFC3339Nano, i.ModifiedTime)
 			if err != nil {
 				return nil, err
 			}
@@ -91,16 +93,48 @@ func (drive *GdriveStorage) IsDownloadable(path string) (bool, error) {
 }
 
 func (drive *GdriveStorage) Download(w io.Writer, path string) error {
-	_ = drive.filterpath(path)
-	panic("not implemented")
+	fileID := drive.filterpath(path)
+
+	resp, err := drive.svc.Files.Get(fileID).Download()
+	if err != nil {
+		return fmt.Errorf("can not download %q: %w", fileID, err)
+	}
+
+	defer resp.Body.Close()
+
+	_, err = io.Copy(w, resp.Body)
+	if err != nil {
+		return fmt.Errorf("can not send file content: %w", err)
+	}
+
+	return nil
 }
 
 func (drive *GdriveStorage) filterpath(path string) string {
+	if len(path) > 0 && path[0] == '/' {
+		path = path[1:]
+	}
+
 	if path == "" {
 		return drive.rootID
 	}
 
 	return path
+}
+
+func OAuth2FromFile(filename string) (*oauth2.Config, error) {
+	b, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to read client secret file: %w", err)
+	}
+
+	// If modifying these scopes, delete your previously saved token.json.
+	config, err := google.ConfigFromJSON(b, drive.DriveReadonlyScope)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to parse client secret file to config: %w", err)
+	}
+
+	return config, nil
 }
 
 func NewServiceFromOauth2(config *oauth2.Config) (*drive.Service, error) {
@@ -110,6 +144,8 @@ func NewServiceFromOauth2(config *oauth2.Config) (*drive.Service, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve Drive client: %w", err)
 	}
+
+	return srv, err
 }
 
 func getClient(config *oauth2.Config) *http.Client {

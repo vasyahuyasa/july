@@ -17,9 +17,8 @@ func main() {
 	host := flag.String("i", "0.0.0.0", "Service network interface")
 	driver := flag.String("drv", "local", "Storage driver (can be local, gdrive, yadisk)")
 
-	//gdriveCredFile := flag.String("gcred", "credentials.json", "Path to file with secret for google drive driver")
+	gdriveCredFile := flag.String("googlecred", "credentials.json", "Path to file with secret for google drive driver")
 	//gdriveTokenFile := flag.String("gtoken", "token.json", "Path to file with token for google drive driver")
-	key := flag.String("k", "", "API key for cloud storage providers (gdrive, yadisk)")
 
 	flag.Parse()
 
@@ -29,9 +28,17 @@ func main() {
 	case "local":
 		store = local.NewFsStorage(*root)
 	case "gdrive":
-		var err error
+		o, err := gdrive.OAuth2FromFile(*gdriveCredFile)
+		if err != nil {
+			log.Fatalf("Can not load google credentials: %v", err)
+		}
 
-		store, err = gdrive.NewStorage(*root, *key)
+		svc, err := gdrive.NewServiceFromOauth2(o)
+		if err != nil {
+			log.Fatalf("Can not init google client: %v", err)
+		}
+
+		store, err = gdrive.NewStorage(*root, svc)
 		if err != nil {
 			log.Fatalf("Can not initialize gdrive: %v", err)
 		}
