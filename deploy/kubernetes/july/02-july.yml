@@ -16,36 +16,25 @@ spec:
     spec:
       containers:
       - name: july
-        image: vasyahuyasa/july:0.0.3
+        image: vasyahuyasa/july:0.0.4
         ports:
         - containerPort: 80
         volumeMounts:
-        - name: credentials
-          mountPath: "/app/credentials.json"
-        - name: token
-          mountPath: "/app/token.json"
+        - name: google-credentials
+          mountPath: "/app/google"
         env:
         - name: STORAGE_DRIVER
           value: "gdrive"
         - name: CATALOG_ROOT
           value: "root"
+        - name: GOOGLE_CREDENTIALS_PATH
+          value: "google/credentials.json"
+        - name: GOOGLE_TOKEN_PATH
+          value: "google/token.json"
       volumes:
-      - name: credentials
-        projected:
-          sources:
-          - secret:
-              name: july-credentials
-              items:
-                - key: credentials.json
-                  path: credentials.json
-      - name: token
-        projected:
-          sources:
-          - secret:
-              name: july-credentials
-              items:
-                - key: token.json
-                  path: token.json
+      - name: google-credentials
+        secret:
+          secretName: july-google-secret
 
 ---
 apiVersion: v1
@@ -68,7 +57,7 @@ metadata:
   name: july-ingress
 spec:
   rules:
-  - http:
+    - http:
       paths:
       - path: /
         backend:
