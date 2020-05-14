@@ -3,20 +3,29 @@ package opds
 import (
 	"encoding/xml"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/vasyahuyasa/july/opds/storage"
 )
 
-const startURL = "/opds"
-const title = "July: home opds catalog"
-const atomTime = "2006-01-02T15:04:05Z"
+const (
+	startURL = "/opds"
+	title    = "July: home opds catalog"
+	atomTime = "2006-01-02T15:04:05Z"
+)
 
 type Server struct {
-	// FileRoot is root catalog of file storage
-	// by default it is current directory
-	FileRoot string
+	store storage.Storage
+}
+
+func NewServer(store storage.Storage) *Server {
+	return &Server{
+		store: store,
+	}
 }
 
 func (s *Server) opdsHandler(w http.ResponseWriter, r *http.Request) {
@@ -24,73 +33,74 @@ func (s *Server) opdsHandler(w http.ResponseWriter, r *http.Request) {
 	start := "http://" + r.Host + startURL
 	path := r.URL.Path[len(startURL):]
 
-	// default file root is current directory
-	if s.FileRoot == "" {
-		cwd, err := os.Getwd()
-		if err != nil {
-			log.Println("os.Getwd():", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "os.Getwd(): %s", err)
+	log.Printf("Path %q", path)
+
+	canDownload := false
+
+	// root always must be folder
+	if path != "" {
+		var err error
+		if canDownload, err = s.store.IsDownloadable(path); err != nil {
+			log.Printf("can not check if path %q is downloadable: %#v", path, err)
+			code := http.StatusInternalServerError
+			if os.IsNotExist(err) {
+				code = http.StatusNotFound
+			}
+			http.Error(w, fmt.Sprintf("can not check if path %q is downloadable: %v", path, err), code)
 			return
 		}
-		s.FileRoot = cwd
 	}
 
-	root := s.FileRoot + path
+	// if we can't download so it should be folder, lets list it
+	if !canDownload {
+		list, err := s.store.List(path)
+		if err != nil {
+			log.Printf("can not list files in %q: %v", path, err)
+			http.Error(w, fmt.Sprintf("can not list file is %q: %v", path, err), http.StatusInternalServerError)
+			return
+		}
 
-	// check for listing or download
-	info, err := os.Stat(root)
-	if os.IsNotExist(err) {
-		w.WriteHeader(http.StatusNotFound)
-		log.Printf("file %q not exists\n", root)
-		fmt.Fprintf(w, "file %q not exists", path)
-		return
-	}
-
-	if !info.IsDir() {
-		log.Printf("Download %q", root)
-		w.Header().Add("Content-Disposition", "Attachment")
-		http.ServeFile(w, r, root)
-		return
-	}
-
-	log.Printf("Linsting for %q\n", root)
-
-	entries, err := makeEntries(root, r.URL.Path)
-	if err != nil {
-		log.Printf("makeEntries(%q, %q): %v\n", root, currentURL, err)
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "makeEntries(%q, %q): %v", root, currentURL, err)
-		return
-	}
-
-	f := &Feed{
-		ID:      currentURL,
-		Title:   title,
-		Xmlns:   "http://www.w3.org/2005/Atom",
-		Updated: time.Now().UTC().Format(atomTime),
-		Link: []*Link{
-			&Link{
-				Href: start,
-				Type: "application/atom+xml;profile=opds-catalog;kind=navigation",
-				Rel:  "start",
+		f := &Feed{
+			ID:      currentURL,
+			Title:   title,
+			Xmlns:   "http://www.w3.org/2005/Atom",
+			Updated: time.Now().UTC().Format(atomTime),
+			Link: []Link{
+				Link{
+					Href: start,
+					Type: dirMime,
+					Rel:  "start",
+				},
+				Link{
+					Href: r.URL.Path,
+					Type: dirMime,
+					Rel:  "self",
+				},
 			},
-			&Link{
-				Href: r.URL.Path,
-				Type: "application/atom+xml;profile=opds-catalog;kind=navigation",
-				Rel:  "self",
-			},
-		},
-		Entry: entries,
+			Entry: entriesFromStorage(list, start),
+		}
+
+		enc := xml.NewEncoder(w)
+
+		w.Header().Set("Content-Type", "application/xml")
+		fmt.Fprint(w, xml.Header)
+		err = enc.Encode(f)
+		if err != nil {
+			log.Printf("can not encode xml feed: %v", err)
+			if err != io.ErrClosedPipe {
+				http.Error(w, fmt.Sprintf("can not encode xml feed: %v", err), http.StatusInternalServerError)
+			}
+		}
+		return
 	}
 
-	enc := xml.NewEncoder(w)
-
-	w.Header().Set("Content-Type", "application/xml")
-	fmt.Fprint(w, xml.Header)
-	err = enc.Encode(f)
+	// download file
+	err := s.store.Download(w, path)
 	if err != nil {
-		log.Println("enc.Encode(v): ", err)
+		log.Printf("can not download %q: %v", path, err)
+		if err != io.ErrClosedPipe {
+			http.Error(w, fmt.Sprintf("can not download %q: %v", path, err), http.StatusInternalServerError)
+		}
 	}
 }
 
