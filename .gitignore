@@ -1,5 +1,5 @@
-cmd/july/july
 vendor
 gdrive_test
 credentials.*
 token.json
+cmd/july/july

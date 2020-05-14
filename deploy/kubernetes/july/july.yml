@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: july
+  labels:
+    app: july
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: july
+  template:
+    metadata:
+      labels:
+        app: july
+    spec:
+      containers:
+      - name: july
+        image: vasyahuyasa/july:0.0.3
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: credentials
+          mountPath: "/app/credentials.json"
+        - name: token
+          mountPath: "/app/token.json"
+        env:
+        - name: STORAGE_DRIVER
+          value: "gdrive"
+        - name: CATALOG_ROOT
+          value: "root"
+      volumes:
+      - name: credentials
+        projected:
+          sources:
+          - secret:
+              name: july-credentials
+              items:
+                - key: credentials.json
+                  path: credentials.json
+      - name: token
+        projected:
+          sources:
+          - secret:
+              name: july-credentials
+              items:
+                - key: token.json
+                  path: token.json
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: july
+  labels:
+    run: july
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+  selector:
+    app: july
+
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: july-ingress
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /
+        backend:
+          serviceName: july
+          servicePort: 80

@@ -9,4 +9,10 @@ COPY --from=builder /build/july /app/july
 EXPOSE 80
 ENV STORAGE_DRIVER=gdrive
 ENV CATALOG_ROOT=root
-CMD /app/july -drv $STORAGE_DRIVER -d $CATALOG_ROOT
+ENV GOOGLE_CREDENTIALS_PATH=credentials.json
+env GOOGLE_TOKEN_PATH=token.json
+CMD /app/july \
+    -s $STORAGE_DRIVER \
+    -d $CATALOG_ROOT \
+    -googlecred $GOOGLE_CREDENTIALS_PATH \
+    -googletoken $GOOGLE_TOKEN_PATH

@@ -19,8 +19,6 @@ import (
 
 const (
 	MIMETypeFolder = "application/vnd.google-apps.folder"
-
-	tokFile = "token.json"
 )
 
 var _ storage.Storage = &GdriveStorage{}
@@ -137,8 +135,8 @@ func OAuth2FromFile(filename string) (*oauth2.Config, error) {
 	return config, nil
 }
 
-func NewServiceFromOauth2(config *oauth2.Config) (*drive.Service, error) {
-	client := getClient(config)
+func NewServiceFromOauth2(config *oauth2.Config, tokenPath string) (*drive.Service, error) {
+	client := getClient(config, tokenPath)
 
 	srv, err := drive.New(client)
 	if err != nil {
@@ -148,14 +146,14 @@ func NewServiceFromOauth2(config *oauth2.Config) (*drive.Service, error) {
 	return srv, err
 }
 
-func getClient(config *oauth2.Config) *http.Client {
+func getClient(config *oauth2.Config, tokenPath string) *http.Client {
 	// The file token.json stores the user's access and refresh tokens, and is
 	// created automatically when the authorization flow completes for the first
 	// time.
-	tok, err := tokenFromFile(tokFile)
+	tok, err := tokenFromFile(tokenPath)
 	if err != nil {
 		tok = getTokenFromWeb(config)
-		saveToken(tokFile, tok)
+		saveToken(tokenPath, tok)
 	}
 	return config.Client(context.Background(), tok)
 }
