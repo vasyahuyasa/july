@@ -1,20 +1,24 @@
 name: Publish docker image
 
-on: 
+on:
   push:
-    branches:
-      - master
+    tags:
+      - '*'
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
+    - name: Get the version
+      id: get_version
+      run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
     - name: build and publish to docker registry
       run: |
         PROJECT_NAME=`echo ${{ github.repository }} | sed 's/\(.*\)\///'`
-        TAG=docker.pkg.github.com/${{ github.repository }}/${PROJECT_NAME}:latest
-        echo ${TAG}
+        IMAGE_NAME=docker.pkg.github.com/${{ github.repository }}/${PROJECT_NAME}
         docker login docker.pkg.github.com -u vasyahuyasa -p ${{ secrets.GITHUB_TOKEN }}
-        docker build . -t ${TAG}
-        docker push ${TAG}
+        docker build . -t ${IMAGE_NAME}:latest
+        docker tag ${IMAGE_NAME}:latest ${IMAGE_NAME}:${{steps.get_version.outputs.VERSION}}
+        docker push ${IMAGE_NAME}:latest
+        docker push ${IMAGE_NAME}:${{steps.get_version.outputs.VERSION}}

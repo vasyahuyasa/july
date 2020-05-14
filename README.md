@@ -17,9 +17,13 @@ https://cloud.docker.com/u/vasyahuyasa/repository/docker/vasyahuyasa/july
 ## Basic usage
 
 ```shell
-Usage of ./july:
+Usage of july:
   -d string
-        Root storage directory
+        Root storage directory (default "./")
+  -drv string
+        Storage driver (can be local, gdrive, yadisk) (default "local")
+  -googlecred string
+        Path to file with secret for google drive driver (default "credentials.json")
   -i string
         Service network interface (default "0.0.0.0")
   -p int
