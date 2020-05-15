@@ -58,8 +58,8 @@ metadata:
 spec:
   rules:
     - http:
-      paths:
-      - path: /
-        backend:
-          serviceName: july
-          servicePort: 80
+        paths:
+        - path: /
+          backend:
+            serviceName: july
+            servicePort: 80

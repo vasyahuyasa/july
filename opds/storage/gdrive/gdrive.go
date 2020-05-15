@@ -21,17 +21,23 @@ const (
 	MIMETypeFolder = "application/vnd.google-apps.folder"
 )
 
+// GdriveStorage must implement storage.Storage
 var _ storage.Storage = &GdriveStorage{}
 
 type GdriveStorage struct {
 	rootID string
 	svc    *drive.Service
+
+	secured      bool
+	securedPaths map[string]struct{}
 }
 
 func NewStorage(root string, svc *drive.Service) (*GdriveStorage, error) {
 	return &GdriveStorage{
-		rootID: root,
-		svc:    svc,
+		rootID:       root,
+		svc:          svc,
+		secured:      false,
+		securedPaths: map[string]struct{}{},
 	}, nil
 }
 
@@ -120,6 +126,13 @@ func (drive *GdriveStorage) filterpath(path string) string {
 	return path
 }
 
+// GuardFiles iterate over files under root directory and mark it as safe for download
+// when you try to list or download not from safe location forbidden error is returned
+func (drive *GdriveStorage) GuardFiles() error {
+	// TOOD
+	return nil
+}
+
 func OAuth2FromFile(filename string) (*oauth2.Config, error) {
 	b, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -136,7 +149,10 @@ func OAuth2FromFile(filename string) (*oauth2.Config, error) {
 }
 
 func NewServiceFromOauth2(config *oauth2.Config, tokenPath string) (*drive.Service, error) {
-	client := getClient(config, tokenPath)
+	client, err := getClient(config, tokenPath)
+	if err != nil {
+		return nil, fmt.Errorf("can not make http client: %w", err)
+	}
 
 	srv, err := drive.New(client)
 	if err != nil {
@@ -146,16 +162,19 @@ func NewServiceFromOauth2(config *oauth2.Config, tokenPath string) (*drive.Servi
 	return srv, err
 }
 
-func getClient(config *oauth2.Config, tokenPath string) *http.Client {
+func getClient(config *oauth2.Config, tokenPath string) (*http.Client, error) {
 	// The file token.json stores the user's access and refresh tokens, and is
 	// created automatically when the authorization flow completes for the first
 	// time.
 	tok, err := tokenFromFile(tokenPath)
 	if err != nil {
 		tok = getTokenFromWeb(config)
-		saveToken(tokenPath, tok)
+		err = saveToken(tokenPath, tok)
+		if err != nil {
+			return nil, fmt.Errorf("can not save auth token to %q: %w", tokenPath, err)
+		}
 	}
-	return config.Client(context.Background(), tok)
+	return config.Client(context.Background(), tok), nil
 }
 
 // Retrieves a token from a local file.
@@ -189,12 +208,12 @@ func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
 }
 
 // Saves a token to a file path.
-func saveToken(path string, token *oauth2.Token) {
+func saveToken(path string, token *oauth2.Token) error {
 	fmt.Printf("Saving credential file to: %s\n", path)
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		log.Fatalf("Unable to cache oauth token: %v", err)
 	}
 	defer f.Close()
-	json.NewEncoder(f).Encode(token)
+	return json.NewEncoder(f).Encode(token)
 }
